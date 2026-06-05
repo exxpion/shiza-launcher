@@ -1,0 +1,39 @@
+{
+  "name": "mc-launcher",
+  "version": "1.0.0",
+  "description": "Custom Minecraft Launcher",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64",
+    "dev": "electron . --dev"
+  },
+  "build": {
+    "appId": "com.yourserver.launcher",
+    "productName": "YourServer Launcher",
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "exxpion",
+      "repo": "shiza-launcher"
+    }
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.7",
+    "extract-zip": "^2.0.1",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  }
+}

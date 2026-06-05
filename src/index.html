@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<title>YourServer Launcher</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Inter:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0a0e1a;
+    --panel:    #0f1422;
+    --border:   #1e2740;
+    --accent:   #4f8ef7;
+    --accent2:  #7c5cfc;
+    --green:    #3ddc84;
+    --text:     #c8d4f0;
+    --muted:    #4a5580;
+    --danger:   #ff4f4f;
+  }
+
+  html, body {
+    width: 900px; height: 580px;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    user-select: none;
+  }
+
+  /* ── TITLEBAR ── */
+  #titlebar {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 36px;
+    background: rgba(10,14,26,0.95);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    -webkit-app-region: drag;
+    z-index: 100;
+    padding: 0 16px;
+  }
+  #titlebar .logo-text {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px; font-weight: 700;
+    letter-spacing: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    text-transform: uppercase;
+  }
+  #titlebar .version { color: var(--muted); font-size: 11px; margin-left: 10px; margin-top: 2px; }
+  .win-controls {
+    margin-left: auto;
+    display: flex; gap: 8px;
+    -webkit-app-region: no-drag;
+  }
+  .win-btn {
+    width: 28px; height: 28px; border-radius: 6px;
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; color: var(--muted);
+    font-size: 14px; transition: all .15s;
+  }
+  .win-btn:hover { background: var(--border); color: var(--text); }
+  .win-btn.close:hover { background: var(--danger); color: #fff; }
+
+  /* ── LAYOUT ── */
+  #app {
+    display: flex;
+    height: 100%;
+    padding-top: 36px;
+  }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: 220px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 24px 0;
+    flex-shrink: 0;
+  }
+  .server-badge {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .server-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 18px; font-weight: 700;
+    color: #fff;
+    letter-spacing: 1px;
+  }
+  .server-sub { color: var(--muted); font-size: 11px; margin-top: 2px; }
+
+  .nav-item {
+    padding: 10px 20px;
+    display: flex; align-items: center; gap: 10px;
+    color: var(--muted); cursor: pointer;
+    transition: all .15s;
+    font-size: 13px;
+    border-left: 2px solid transparent;
+  }
+  .nav-item:hover { color: var(--text); background: rgba(79,142,247,.05); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(79,142,247,.08); }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    font-size: 11px; color: var(--muted);
+  }
+  .online-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 6px; }
+
+  /* ── MAIN CONTENT ── */
+  #main {
+    flex: 1;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+
+  .page { display: none; flex: 1; flex-direction: column; padding: 28px; overflow-y: auto; }
+  .page.active { display: flex; }
+
+  /* ── HOME PAGE ── */
+  .hero {
+    background: linear-gradient(135deg, rgba(79,142,247,.12), rgba(124,92,252,.08));
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; top: -40px; right: -40px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(79,142,247,.15), transparent 70%);
+    border-radius: 50%;
+  }
+  .hero-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 26px; font-weight: 700;
+    color: #fff; margin-bottom: 6px;
+  }
+  .hero-sub { color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+  /* Login form */
+  .login-section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .form-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; display: block; }
+  .form-input {
+    width: 100%; padding: 10px 14px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    font-family: 'Inter', sans-serif; font-size: 13px;
+    outline: none; transition: border-color .15s;
+  }
+  .form-input:focus { border-color: var(--accent); }
+  .form-input::placeholder { color: var(--muted); }
+
+  .radio-group { display: flex; gap: 10px; margin-top: 12px; }
+  .radio-btn {
+    flex: 1; padding: 10px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; cursor: pointer; text-align: center;
+    transition: all .15s; font-size: 12px; color: var(--muted);
+  }
+  .radio-btn:hover { border-color: var(--accent); color: var(--text); }
+  .radio-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(79,142,247,.08); }
+  .radio-btn .rb-icon { font-size: 18px; display: block; margin-bottom: 4px; }
+
+  /* Launch button */
+  #launch-btn {
+    width: 100%; padding: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: 10px;
+    color: #fff; font-family: 'Rajdhani', sans-serif;
+    font-size: 17px; font-weight: 700; letter-spacing: 2px;
+    cursor: pointer; text-transform: uppercase;
+    transition: opacity .15s, transform .1s;
+    position: relative; overflow: hidden;
+  }
+  #launch-btn:hover { opacity: .9; }
+  #launch-btn:active { transform: scale(.98); }
+  #launch-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+  /* Progress */
+  #progress-section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 16px;
+    display: none;
+  }
+  #progress-section.visible { display: block; }
+  .progress-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .progress-bar-wrap {
+    background: var(--bg);
+    border-radius: 6px; height: 6px; overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 6px;
+    transition: width .3s;
+    width: 0%;
+  }
+  .progress-bar.indeterminate {
+    width: 40%;
+    animation: indeterminate 1.2s infinite linear;
+  }
+  @keyframes indeterminate {
+    0%   { margin-left: -40%; }
+    100% { margin-left: 100%; }
+  }
+
+  /* ── LOG PAGE ── */
+  #log-output {
+    flex: 1;
+    background: #060810;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    overflow-y: auto;
+    color: #7a9fc0;
+  }
+  .log-line { margin-bottom: 2px; }
+  .log-line.ok  { color: var(--green); }
+  .log-line.err { color: var(--danger); }
+  .log-line.warn { color: #f0c040; }
+
+  /* ── UPDATE BANNER ── */
+  #update-banner {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--accent); color: #fff;
+    padding: 10px 20px;
+    display: none; align-items: center; gap: 12px;
+    font-size: 13px; z-index: 200;
+  }
+  #update-banner.visible { display: flex; }
+  #update-banner button {
+    margin-left: auto; padding: 6px 14px;
+    background: rgba(255,255,255,.2); border: none;
+    border-radius: 6px; color: #fff; cursor: pointer;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<!-- TITLEBAR -->
+<div id="titlebar">
+  <span class="logo-text">YourServer</span>
+  <span class="version">v1.0.0 · MC 1.20.4 Forge</span>
+  <div class="win-controls">
+    <button class="win-btn" onclick="ipc('minimize')">─</button>
+    <button class="win-btn close" onclick="ipc('close')">✕</button>
+  </div>
+</div>
+
+<div id="app">
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="server-badge">
+      <div class="server-name">☰ YourServer</div>
+      <div class="server-sub">Forge 1.20.4</div>
+    </div>
+
+    <div class="nav-item active" onclick="showPage('home', this)">
+      <span class="nav-icon">🎮</span> Играть
+    </div>
+    <div class="nav-item" onclick="showPage('mods', this)">
+      <span class="nav-icon">📦</span> Моды
+    </div>
+    <div class="nav-item" onclick="showPage('log', this)">
+      <span class="nav-icon">📋</span> Логи
+    </div>
+
+    <div class="sidebar-footer">
+      <span class="online-dot"></span>Сервер онлайн
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+
+    <!-- HOME -->
+    <div class="page active" id="page-home">
+      <div class="hero">
+        <div class="hero-title">Добро пожаловать! 👋</div>
+        <div class="hero-sub">Лаунчер автоматически установит все необходимые моды<br>и всегда поддерживает их в актуальном состоянии.</div>
+      </div>
+
+      <div class="login-section">
+        <label class="form-label">Никнейм</label>
+        <input class="form-input" id="username" type="text" placeholder="Введите ваш ник" maxlength="16"/>
+
+        <div style="margin-top:16px">
+          <label class="form-label">Тип аккаунта</label>
+          <div class="radio-group">
+            <div class="radio-btn selected" id="rb-offline" onclick="selectAccount('offline')">
+              <span class="rb-icon">🏴‍☠️</span>
+              Без лицензии
+            </div>
+            <div class="radio-btn" id="rb-licensed" onclick="selectAccount('licensed')">
+              <span class="rb-icon">✅</span>
+              Лицензия (Microsoft)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button id="launch-btn" onclick="launch()">▶ ЗАПУСТИТЬ ИГРУ</button>
+
+      <div id="progress-section">
+        <div class="progress-label" id="progress-label">Подготовка...</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODS -->
+    <div class="page" id="page-mods">
+      <div style="margin-bottom:16px">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#fff">Установленные моды</div>
+        <div style="color:var(--muted);font-size:12px;margin-top:4px">Список синхронизируется автоматически при запуске</div>
+      </div>
+      <div id="mods-list" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
+    <!-- LOG -->
+    <div class="page" id="page-log">
+      <div style="margin-bottom:12px;font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#fff">Консоль</div>
+      <div id="log-output"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- UPDATE BANNER -->
+<div id="update-banner">
+  🔄 Доступна новая версия лаунчера!
+  <button onclick="ipc('install-update')">Установить и перезапустить</button>
+</div>
+
+<script>
+const { ipcRenderer } = require('electron');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+
+let accountType = 'offline';
+let gameRunning = false;
+
+// ── IPC helpers ──
+function ipc(channel, data) { ipcRenderer.send(channel, data); }
+
+// ── Navigation ──
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  el.classList.add('active');
+  if (id === 'mods') loadModsList();
+}
+
+// ── Account type ──
+function selectAccount(type) {
+  accountType = type;
+  document.getElementById('rb-offline').classList.toggle('selected', type === 'offline');
+  document.getElementById('rb-licensed').classList.toggle('selected', type === 'licensed');
+}
+
+// ── Launch ──
+function launch() {
+  const username = document.getElementById('username').value.trim();
+  if (!username) { alert('Введите никнейм!'); return; }
+  if (gameRunning) return;
+
+  document.getElementById('progress-section').classList.add('visible');
+  document.getElementById('launch-btn').disabled = true;
+
+  ipc('launch', { username, isLicensed: accountType === 'licensed' });
+}
+
+// ── Progress ──
+ipcRenderer.on('progress', (_, { label, value }) => {
+  const bar = document.getElementById('progress-bar');
+  document.getElementById('progress-label').textContent = label;
+  if (value < 0) {
+    bar.classList.add('indeterminate');
+  } else {
+    bar.classList.remove('indeterminate');
+    bar.style.width = Math.round(value * 100) + '%';
+  }
+});
+
+ipcRenderer.on('game-launched', () => {
+  gameRunning = false;
+  document.getElementById('launch-btn').disabled = false;
+  document.getElementById('progress-section').classList.remove('visible');
+  document.getElementById('progress-label').textContent = '';
+});
+
+// ── Logs ──
+ipcRenderer.on('log', (_, msg) => {
+  const out = document.getElementById('log-output');
+  const line = document.createElement('div');
+  line.className = 'log-line' +
+    (msg.includes('✅') ? ' ok' : msg.includes('❌') ? ' err' : msg.includes('⚠️') ? ' warn' : '');
+  line.textContent = msg;
+  out.appendChild(line);
+  out.scrollTop = out.scrollHeight;
+});
+
+ipcRenderer.on('error', (_, msg) => {
+  const out = document.getElementById('log-output');
+  const line = document.createElement('div');
+  line.className = 'log-line err';
+  line.textContent = '❌ ' + msg;
+  out.appendChild(line);
+});
+
+// ── Mods list ──
+function loadModsList() {
+  const modsDir = path.join(os.homedir(), 'AppData', 'Roaming', '.yourserver', 'mods');
+  const container = document.getElementById('mods-list');
+  container.innerHTML = '';
+
+  if (!fs.existsSync(modsDir)) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px">Моды ещё не загружены. Запустите игру.</div>';
+    return;
+  }
+
+  const files = fs.readdirSync(modsDir).filter(f => f.endsWith('.jar'));
+  if (!files.length) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px">Моды не найдены.</div>';
+    return;
+  }
+
+  files.forEach(f => {
+    const el = document.createElement('div');
+    el.style.cssText = 'padding:12px 16px;background:var(--panel);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;gap:12px';
+    el.innerHTML = `
+      <span style="font-size:18px">📦</span>
+      <span style="color:var(--text);font-size:13px">${f}</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--green)">✓ установлен</span>
+    `;
+    container.appendChild(el);
+  });
+}
+
+// ── Launcher update ──
+ipcRenderer.on('launcher-update-ready', () => {
+  document.getElementById('update-banner').classList.add('visible');
+});
+</script>
+</body>
+</html>
