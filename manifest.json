@@ -2,11 +2,5 @@
   "version": "1.0.0",
   "mcVersion": "1.20.4",
   "forgeVersion": "1.20.4-49.1.0",
-  "mods": [
-    {
-      "filename": "journeymap-1.20.4-5.10.0-forge.jar",
-      "url": "https://github.com/ВАШ_USERNAME/ВАШ_РЕПО/releases/download/mods/journeymap-1.20.4-5.10.0-forge.jar",
-      "md5": "СЮДА_MD5_ХЕШ_ФАЙЛА"
-    }
-  ]
+  "mods": []
 }
