@@ -45,16 +45,16 @@ function createWindow() {
     setTimeout(() => startServerPing(), 1000);
   });
   if (!process.argv.includes('--dev')) {
-  autoUpdater.autoDownload = false;
-  autoUpdater.allowDowngrade = false;
-  autoUpdater.checkForUpdates().then(result => {
-    if (result && result.updateInfo) {
-      send('launcher-update-ready', true);
-    }
-  }).catch(err => {
-    console.error('Update check failed:', err.message);
-  });
-}
+    autoUpdater.autoDownload = false;
+    autoUpdater.allowDowngrade = false;
+    autoUpdater.checkForUpdates().then(result => {
+      if (result && result.updateInfo) {
+        send('launcher-update-ready', true);
+      }
+    }).catch(err => {
+      console.error('Update check failed:', err.message);
+    });
+  }
 }
 
 app.whenReady().then(createWindow);
