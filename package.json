@@ -16,7 +16,8 @@
       "target": "nsis",
       "icon": "assets/icon.ico",
       "sign": null,
-      "signingHashAlgorithms": null
+      "signingHashAlgorithms": null,
+      "artifactName": "Shiza-mc-Setup-${version}.exe"
     },
     "nsis": {
       "oneClick": false,
