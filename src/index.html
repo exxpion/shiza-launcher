@@ -2,269 +2,150 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8"/>
-<title>YourServer Launcher</title>
+<title>ShizaServer Launcher</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Inter:wght@300;400;500&display=swap');
-
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
   :root {
-    --bg:       #0a0e1a;
-    --panel:    #0f1422;
-    --border:   #1e2740;
-    --accent:   #4f8ef7;
-    --accent2:  #7c5cfc;
-    --green:    #3ddc84;
-    --text:     #c8d4f0;
-    --muted:    #4a5580;
-    --danger:   #ff4f4f;
+    --bg:      #0d0d0d;
+    --panel:   #141414;
+    --border:  #2a2a2a;
+    --accent:  #e0e0e0;
+    --accent2: #a0a0a0;
+    --green:   #3ddc84;
+    --text:    #d0d0d0;
+    --muted:   #555555;
+    --danger:  #ff4f4f;
+    --warn:    #f0c040;
   }
+  html, body { width:900px; height:580px; overflow:hidden; background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; font-size:13px; user-select:none; }
 
-  html, body {
-    width: 900px; height: 580px;
-    overflow: hidden;
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Inter', sans-serif;
-    font-size: 13px;
-    user-select: none;
-  }
+  /* TITLEBAR */
+  #titlebar { position:fixed; top:0; left:0; right:0; height:36px; background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; -webkit-app-region:drag; z-index:100; padding:0 16px; }
+  #titlebar .logo-text { font-family:'Rajdhani',sans-serif; font-size:15px; font-weight:700; letter-spacing:2px; color:var(--text); text-transform:uppercase; }
+  #titlebar .version { color:var(--muted); font-size:11px; margin-left:10px; margin-top:2px; }
+  .win-controls { margin-left:auto; display:flex; gap:8px; -webkit-app-region:no-drag; }
+  .win-btn { width:28px; height:28px; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; background:transparent; color:var(--muted); font-size:14px; transition:all .15s; }
+  .win-btn:hover { background:var(--border); color:var(--text); }
+  .win-btn.close:hover { background:var(--danger); color:#fff; }
 
-  /* ── TITLEBAR ── */
-  #titlebar {
-    position: fixed; top: 0; left: 0; right: 0;
-    height: 36px;
-    background: rgba(10,14,26,0.95);
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center;
-    -webkit-app-region: drag;
-    z-index: 100;
-    padding: 0 16px;
-  }
-  #titlebar .logo-text {
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 15px; font-weight: 700;
-    letter-spacing: 2px;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    text-transform: uppercase;
-  }
-  #titlebar .version { color: var(--muted); font-size: 11px; margin-left: 10px; margin-top: 2px; }
-  .win-controls {
-    margin-left: auto;
-    display: flex; gap: 8px;
-    -webkit-app-region: no-drag;
-  }
-  .win-btn {
-    width: 28px; height: 28px; border-radius: 6px;
-    border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    background: transparent; color: var(--muted);
-    font-size: 14px; transition: all .15s;
-  }
-  .win-btn:hover { background: var(--border); color: var(--text); }
-  .win-btn.close:hover { background: var(--danger); color: #fff; }
+  /* LAYOUT */
+  #app { display:flex; height:100%; padding-top:36px; }
 
-  /* ── LAYOUT ── */
-  #app {
-    display: flex;
-    height: 100%;
-    padding-top: 36px;
-  }
+  /* SIDEBAR */
+  #sidebar { width:200px; background:#111; border-right:1px solid var(--border); display:flex; flex-direction:column; padding:20px 0; flex-shrink:0; }
+  .server-badge { padding:0 16px 16px; border-bottom:1px solid var(--border); margin-bottom:12px; }
+  .server-name { font-family:'Rajdhani',sans-serif; font-size:17px; font-weight:700; color:#fff; letter-spacing:1px; }
+  .server-sub { color:var(--muted); font-size:11px; margin-top:2px; }
+  .nav-item { padding:9px 16px; display:flex; align-items:center; gap:10px; color:var(--muted); cursor:pointer; transition:all .15s; font-size:13px; border-left:2px solid transparent; }
+  .nav-item:hover { color:var(--text); background:rgba(255,255,255,.03); }
+  .nav-item.active { color:var(--text); border-left-color:var(--text); background:rgba(255,255,255,.04); }
+  .nav-icon { font-size:15px; width:18px; text-align:center; }
+  .sidebar-footer { margin-top:auto; padding:14px 16px; border-top:1px solid var(--border); font-size:11px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .online-dot { width:6px; height:6px; border-radius:50%; background:var(--muted); flex-shrink:0; }
 
-  /* ── SIDEBAR ── */
-  #sidebar {
-    width: 220px;
-    background: var(--panel);
-    border-right: 1px solid var(--border);
-    display: flex; flex-direction: column;
-    padding: 24px 0;
-    flex-shrink: 0;
-  }
-  .server-badge {
-    padding: 0 20px 20px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 16px;
-  }
-  .server-name {
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 18px; font-weight: 700;
-    color: #fff;
-    letter-spacing: 1px;
-  }
-  .server-sub { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  /* MAIN */
+  #main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+  .page { display:none; flex:1; flex-direction:column; overflow:hidden; }
+  .page.active { display:flex; }
 
-  .nav-item {
-    padding: 10px 20px;
-    display: flex; align-items: center; gap: 10px;
-    color: var(--muted); cursor: pointer;
-    transition: all .15s;
-    font-size: 13px;
-    border-left: 2px solid transparent;
-  }
-  .nav-item:hover { color: var(--text); background: rgba(79,142,247,.05); }
-  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(79,142,247,.08); }
-  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  /* HOME PAGE */
+  #page-home { flex-direction:column; }
+  .home-content { flex:1; display:flex; overflow:hidden; }
 
-  .sidebar-footer {
-    margin-top: auto;
-    padding: 16px 20px;
-    border-top: 1px solid var(--border);
-    font-size: 11px; color: var(--muted);
-  }
-  .online-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 6px; }
+  /* NEWS */
+  .news-section { flex:1; padding:16px 12px 16px 18px; display:flex; flex-direction:column; gap:10px; overflow:hidden; }
+  .section-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid var(--border); padding-bottom:6px; }
+  .news-list { display:flex; flex-direction:column; gap:7px; overflow-y:auto; }
+  .news-item { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+  .news-date { font-size:10px; color:var(--muted); margin-bottom:3px; }
+  .news-title { font-size:12px; color:var(--text); font-weight:500; }
+  .news-body { font-size:11px; color:#666; margin-top:3px; line-height:1.5; }
 
-  /* ── MAIN CONTENT ── */
-  #main {
-    flex: 1;
-    display: flex; flex-direction: column;
-    overflow: hidden;
-  }
+  /* DISCORD */
+  .discord-section { width:148px; padding:16px 18px 16px 6px; display:flex; flex-direction:column; gap:10px; flex-shrink:0; }
+  .discord-card { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:10px 12px; display:flex; flex-direction:column; gap:6px; }
+  .discord-text { font-size:11px; color:#666; line-height:1.5; }
+  .discord-link { font-size:11px; color:#fff; text-decoration:none; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:1px; transition:border-color .15s; word-break:break-all; }
+  .discord-link:hover { border-bottom-color:rgba(255,255,255,0.5); }
 
-  .page { display: none; flex: 1; flex-direction: column; padding: 28px; overflow-y: auto; }
-  .page.active { display: flex; }
+  /* BOTTOM BAR */
+  .home-bottom { border-top:1px solid var(--border); background:var(--bg); flex-shrink:0; }
 
-  /* ── HOME PAGE ── */
-  .hero {
-    background: linear-gradient(135deg, rgba(79,142,247,.12), rgba(124,92,252,.08));
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 28px;
-    margin-bottom: 20px;
-    position: relative;
-    overflow: hidden;
-  }
-  .hero::before {
-    content: '';
-    position: absolute; top: -40px; right: -40px;
-    width: 200px; height: 200px;
-    background: radial-gradient(circle, rgba(79,142,247,.15), transparent 70%);
-    border-radius: 50%;
-  }
-  .hero-title {
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 26px; font-weight: 700;
-    color: #fff; margin-bottom: 6px;
-  }
-  .hero-sub { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  /* Нормальное состояние */
+  #state-normal { padding:12px 18px; display:flex; align-items:flex-end; gap:10px; }
+  .nick-wrap { display:flex; flex-direction:column; gap:4px; flex:1; }
+  .form-label { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .form-input { width:100%; padding:8px 12px; background:var(--panel); border:1px solid var(--border); border-radius:8px; color:var(--text); font-family:'Inter',sans-serif; font-size:13px; outline:none; transition:border-color .15s; }
+  .form-input:focus { border-color:#444; }
+  .form-input::placeholder { color:var(--muted); }
+  #launch-btn { padding:8px 22px; background:#1f1f1f; border:1px solid #3a3a3a; border-radius:8px; color:var(--text); font-family:'Rajdhani',sans-serif; font-size:14px; font-weight:700; letter-spacing:1px; cursor:pointer; text-transform:uppercase; transition:all .15s; white-space:nowrap; flex-shrink:0; }
+  #launch-btn:hover { background:#262626; border-color:#4a4a4a; }
+  #launch-btn:active { transform:scale(.98); }
+  #launch-btn:disabled { opacity:.4; cursor:not-allowed; transform:none; }
 
-  /* Login form */
-  .login-section {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 24px;
-    margin-bottom: 16px;
-  }
-  .form-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; display: block; }
-  .form-input {
-    width: 100%; padding: 10px 14px;
-    background: var(--bg); border: 1px solid var(--border);
-    border-radius: 8px; color: var(--text);
-    font-family: 'Inter', sans-serif; font-size: 13px;
-    outline: none; transition: border-color .15s;
-  }
-  .form-input:focus { border-color: var(--accent); }
-  .form-input::placeholder { color: var(--muted); }
+  /* Прогресс состояние */
+  #state-progress { display:none; padding:12px 18px; }
+  .progress-label { font-size:11px; color:var(--muted); margin-bottom:7px; }
+  .progress-bar-wrap { background:#1a1a1a; border-radius:4px; height:5px; overflow:hidden; }
+  .progress-bar { height:100%; background:#888; border-radius:4px; transition:width .3s; width:0%; }
+  .progress-bar.indeterminate { width:40%; animation:indeterminate 1.2s infinite linear; }
+  @keyframes indeterminate { 0%{margin-left:-40%} 100%{margin-left:100%} }
+  .progress-hint { font-size:10px; color:#333; margin-top:5px; }
 
-  .radio-group { display: flex; gap: 10px; margin-top: 12px; }
-  .radio-btn {
-    flex: 1; padding: 10px;
-    background: var(--bg); border: 1px solid var(--border);
-    border-radius: 8px; cursor: pointer; text-align: center;
-    transition: all .15s; font-size: 12px; color: var(--muted);
-  }
-  .radio-btn:hover { border-color: var(--accent); color: var(--text); }
-  .radio-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(79,142,247,.08); }
-  .radio-btn .rb-icon { font-size: 18px; display: block; margin-bottom: 4px; }
+  /* Игра запущена */
+  #state-playing { display:none; padding:12px 18px; align-items:center; gap:12px; }
+  .playing-icon { font-size:28px; }
+  .playing-text { font-family:'Rajdhani',sans-serif; font-size:16px; font-weight:700; color:var(--green); }
+  .playing-sub { font-size:11px; color:var(--muted); }
 
-  /* Launch button */
-  #launch-btn {
-    width: 100%; padding: 14px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border: none; border-radius: 10px;
-    color: #fff; font-family: 'Rajdhani', sans-serif;
-    font-size: 17px; font-weight: 700; letter-spacing: 2px;
-    cursor: pointer; text-transform: uppercase;
-    transition: opacity .15s, transform .1s;
-    position: relative; overflow: hidden;
-  }
-  #launch-btn:hover { opacity: .9; }
-  #launch-btn:active { transform: scale(.98); }
-  #launch-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+  /* MODS PAGE */
+  #page-mods { padding:22px; }
+  .page-title { font-family:'Rajdhani',sans-serif; font-size:20px; font-weight:700; color:#fff; margin-bottom:4px; }
+  .page-sub { color:var(--muted); font-size:11px; margin-bottom:16px; }
+  #mods-list { display:flex; flex-direction:column; gap:7px; overflow-y:auto; flex:1; }
+  .mod-item { padding:10px 14px; background:var(--panel); border:1px solid var(--border); border-radius:8px; display:flex; align-items:center; gap:10px; }
 
-  /* Progress */
-  #progress-section {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-    margin-top: 16px;
-    display: none;
-  }
-  #progress-section.visible { display: block; }
-  .progress-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
-  .progress-bar-wrap {
-    background: var(--bg);
-    border-radius: 6px; height: 6px; overflow: hidden;
-  }
-  .progress-bar {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    border-radius: 6px;
-    transition: width .3s;
-    width: 0%;
-  }
-  .progress-bar.indeterminate {
-    width: 40%;
-    animation: indeterminate 1.2s infinite linear;
-  }
-  @keyframes indeterminate {
-    0%   { margin-left: -40%; }
-    100% { margin-left: 100%; }
-  }
+  /* SETTINGS PAGE */
+  #page-settings { padding:22px; overflow-y:auto; }
+  .settings-section { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:18px; margin-bottom:14px; }
+  .settings-title { font-family:'Rajdhani',sans-serif; font-size:15px; font-weight:700; color:#fff; margin-bottom:14px; }
+  .setting-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .setting-row:last-child { margin-bottom:0; }
+  .setting-label { font-size:13px; color:var(--text); }
+  .setting-sub { font-size:11px; color:var(--muted); margin-top:2px; }
+  .ram-slider { -webkit-appearance:none; width:160px; height:4px; background:var(--border); border-radius:2px; outline:none; cursor:pointer; }
+  .ram-slider::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:#888; cursor:pointer; }
+  .ram-value { font-family:'Rajdhani',sans-serif; font-size:15px; font-weight:700; color:var(--text); min-width:44px; text-align:right; }
+  .open-folder-btn { padding:7px 14px; background:var(--bg); border:1px solid var(--border); border-radius:7px; color:var(--text); cursor:pointer; font-size:12px; transition:all .15s; display:flex; align-items:center; gap:6px; }
+  .open-folder-btn:hover { border-color:#555; }
 
-  /* ── LOG PAGE ── */
-  #log-output {
-    flex: 1;
-    background: #060810;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px;
-    font-family: 'Consolas', monospace;
-    font-size: 12px;
-    line-height: 1.7;
-    overflow-y: auto;
-    color: #7a9fc0;
-  }
-  .log-line { margin-bottom: 2px; }
-  .log-line.ok  { color: var(--green); }
-  .log-line.err { color: var(--danger); }
-  .log-line.warn { color: #f0c040; }
+  /* LOG PAGE */
+  #page-log { padding:22px; }
+  .log-toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .log-filter { display:flex; gap:6px; }
+  .filter-btn { padding:4px 10px; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--muted); font-size:11px; cursor:pointer; transition:all .15s; }
+  .filter-btn.active { border-color:#555; color:var(--text); }
+  .clear-btn { padding:4px 10px; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--muted); font-size:11px; cursor:pointer; transition:all .15s; }
+  .clear-btn:hover { border-color:var(--danger); color:var(--danger); }
+  #log-output { flex:1; background:#060810; border:1px solid var(--border); border-radius:10px; padding:14px; font-family:'Consolas',monospace; font-size:12px; line-height:1.7; overflow-y:auto; color:#5a7a90; }
+  .log-line { margin-bottom:2px; }
+  .log-line.ok { color:var(--green); }
+  .log-line.err { color:var(--danger); }
+  .log-line.warn { color:var(--warn); }
+  .log-line.mclc { color:#2a3a4a; font-size:11px; }
 
-  /* ── UPDATE BANNER ── */
-  #update-banner {
-    position: fixed; bottom: 0; left: 0; right: 0;
-    background: var(--accent); color: #fff;
-    padding: 10px 20px;
-    display: none; align-items: center; gap: 12px;
-    font-size: 13px; z-index: 200;
-  }
-  #update-banner.visible { display: flex; }
-  #update-banner button {
-    margin-left: auto; padding: 6px 14px;
-    background: rgba(255,255,255,.2); border: none;
-    border-radius: 6px; color: #fff; cursor: pointer;
-    font-size: 12px;
-  }
+  /* UPDATE BANNER */
+  #update-banner { position:fixed; bottom:0; left:0; right:0; background:#222; border-top:1px solid var(--border); color:var(--text); padding:10px 20px; display:none; align-items:center; gap:12px; font-size:13px; z-index:200; }
+  #update-banner.visible { display:flex; }
+  #update-banner button { margin-left:auto; padding:6px 14px; background:#333; border:1px solid #444; border-radius:6px; color:var(--text); cursor:pointer; font-size:12px; }
 </style>
 </head>
 <body>
 
-<!-- TITLEBAR -->
 <div id="titlebar">
-  <span class="logo-text">YourServer</span>
-  <span class="version">v1.0.0 · MC 1.20.4 Forge</span>
+  <span class="logo-text">ShizaServer</span>
+  <span class="version">v1.0.1 · MC 1.20.4 Forge</span>
   <div class="win-controls">
     <button class="win-btn" onclick="ipc('minimize')">─</button>
     <button class="win-btn close" onclick="ipc('close')">✕</button>
@@ -272,104 +153,192 @@
 </div>
 
 <div id="app">
-  <!-- SIDEBAR -->
   <div id="sidebar">
     <div class="server-badge">
-      <div class="server-name">☰ YourServer</div>
+      <div class="server-name">⚡ ShizaServer</div>
       <div class="server-sub">Forge 1.20.4</div>
     </div>
-
-    <div class="nav-item active" onclick="showPage('home', this)">
-      <span class="nav-icon">🎮</span> Играть
-    </div>
-    <div class="nav-item" onclick="showPage('mods', this)">
-      <span class="nav-icon">📦</span> Моды
-    </div>
-    <div class="nav-item" onclick="showPage('log', this)">
-      <span class="nav-icon">📋</span> Логи
-    </div>
-
+    <div class="nav-item active" onclick="showPage('home',this)"><span class="nav-icon">🎮</span> Играть</div>
+    <div class="nav-item" onclick="showPage('mods',this)"><span class="nav-icon">📦</span> Моды</div>
+    <div class="nav-item" onclick="showPage('settings',this)"><span class="nav-icon">⚙️</span> Настройки</div>
+    <div class="nav-item" onclick="showPage('log',this)"><span class="nav-icon">📋</span> Логи</div>
     <div class="sidebar-footer">
-      <span class="online-dot"></span>Сервер онлайн
+      <span class="online-dot" id="server-dot"></span>
+      <span id="server-status-text">Проверяю...</span>
     </div>
   </div>
 
-  <!-- MAIN -->
   <div id="main">
 
     <!-- HOME -->
     <div class="page active" id="page-home">
-      <div class="hero">
-        <div class="hero-title">Добро пожаловать! 👋</div>
-        <div class="hero-sub">Лаунчер автоматически установит все необходимые моды<br>и всегда поддерживает их в актуальном состоянии.</div>
-      </div>
-
-      <div class="login-section">
-        <label class="form-label">Никнейм</label>
-        <input class="form-input" id="username" type="text" placeholder="Введите ваш ник" maxlength="16"/>
-
-        <div style="margin-top:16px">
-          <label class="form-label">Тип аккаунта</label>
-          <div class="radio-group">
-            <div class="radio-btn selected" id="rb-offline" onclick="selectAccount('offline')">
-              <span class="rb-icon">🏴‍☠️</span>
-              Без лицензии
+      <div class="home-content">
+        <!-- Новости -->
+        <div class="news-section">
+          <div class="section-label">📰 Новости сервера</div>
+          <div class="news-list" id="news-list">
+            <div class="news-item">
+              <div class="news-date">Загрузка...</div>
             </div>
-            <div class="radio-btn" id="rb-licensed" onclick="selectAccount('licensed')">
-              <span class="rb-icon">✅</span>
-              Лицензия (Microsoft)
-            </div>
+          </div>
+        </div>
+        <!-- Дискорд -->
+        <div class="discord-section">
+          <div class="section-label">💬 Discord</div>
+          <div class="discord-card">
+            <div class="discord-text">Есть вопросы? Заходи к нам!</div>
+            <a class="discord-link" href="#" onclick="openLink('https://discord.gg/JnBEGBqaz9')">discord.gg/JnBEGBqaz9</a>
           </div>
         </div>
       </div>
 
-      <button id="launch-btn" onclick="launch()">▶ ЗАПУСТИТЬ ИГРУ</button>
-
-      <div id="progress-section">
-        <div class="progress-label" id="progress-label">Подготовка...</div>
-        <div class="progress-bar-wrap">
-          <div class="progress-bar" id="progress-bar"></div>
+      <!-- Bottom bar -->
+      <div class="home-bottom">
+        <!-- Нормальное состояние -->
+        <div id="state-normal">
+          <div class="nick-wrap">
+            <label class="form-label">Никнейм</label>
+            <input class="form-input" id="username" type="text" placeholder="Введите ваш ник" maxlength="16"/>
+          </div>
+          <button id="launch-btn" onclick="launch()">▶ ИГРАТЬ</button>
+        </div>
+        <!-- Прогресс -->
+        <div id="state-progress">
+          <div class="progress-label" id="progress-label">Подготовка...</div>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar" id="progress-bar"></div>
+          </div>
+          <div class="progress-hint">Первый запуск может занять несколько минут</div>
+        </div>
+        <!-- Игра запущена -->
+        <div id="state-playing">
+          <div class="playing-icon">🎮</div>
+          <div>
+            <div class="playing-text">Игра запущена!</div>
+            <div class="playing-sub">Лаунчер свернётся автоматически</div>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- MODS -->
     <div class="page" id="page-mods">
-      <div style="margin-bottom:16px">
-        <div style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#fff">Установленные моды</div>
-        <div style="color:var(--muted);font-size:12px;margin-top:4px">Список синхронизируется автоматически при запуске</div>
+      <div class="page-title">Установленные моды</div>
+      <div class="page-sub">Синхронизируются автоматически при каждом запуске</div>
+      <div id="mods-list"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="settings-section">
+        <div class="settings-title">🖥️ Производительность</div>
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Оперативная память</div>
+            <div class="setting-sub" id="ram-total">Определяю...</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <input type="range" class="ram-slider" id="ram-slider" min="1" max="8" step="1" value="2"/>
+            <div class="ram-value" id="ram-value">2 ГБ</div>
+          </div>
+        </div>
       </div>
-      <div id="mods-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div class="settings-section">
+        <div class="settings-title">📁 Папки</div>
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Папка модов</div>
+            <div class="setting-sub" id="mods-path-label">...</div>
+          </div>
+          <button class="open-folder-btn" onclick="openModsFolder()">📂 Открыть</button>
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Папка игры</div>
+            <div class="setting-sub" id="game-path-label">...</div>
+          </div>
+          <button class="open-folder-btn" onclick="openGameFolder()">📂 Открыть</button>
+        </div>
+      </div>
     </div>
 
     <!-- LOG -->
     <div class="page" id="page-log">
-      <div style="margin-bottom:12px;font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#fff">Консоль</div>
+      <div class="log-toolbar">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#fff">Консоль</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="log-filter">
+            <button class="filter-btn active" id="filter-all" onclick="setFilter('all')">Все</button>
+            <button class="filter-btn" id="filter-important" onclick="setFilter('important')">Важные</button>
+          </div>
+          <button class="clear-btn" onclick="clearLog()">Очистить</button>
+        </div>
+      </div>
       <div id="log-output"></div>
     </div>
 
   </div>
 </div>
 
-<!-- UPDATE BANNER -->
 <div id="update-banner">
   🔄 Доступна новая версия лаунчера!
   <button onclick="ipc('install-update')">Установить и перезапустить</button>
 </div>
 
 <script>
-const { ipcRenderer } = require('electron');
-const fs = require('fs');
+const { ipcRenderer, shell } = require('electron');
+const fs   = require('fs');
 const path = require('path');
-const os = require('os');
+const os   = require('os');
 
-let accountType = 'offline';
+const GAME_DIR = path.join(os.homedir(), 'AppData', 'Roaming', '.shiza-mc');
+const MODS_DIR = path.join(GAME_DIR, 'mods');
+const SETTINGS_FILE = path.join(GAME_DIR, 'launcher-settings.json');
+
 let gameRunning = false;
+let logFilter   = 'all';
+let allLogs     = [];
 
-// ── IPC helpers ──
+// ── Настройки ──
+function loadSettings() {
+  try { if (fs.existsSync(SETTINGS_FILE)) return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); } catch(e) {}
+  return { username: '', ram: 2 };
+}
+function saveSettings(s) {
+  try { if (!fs.existsSync(GAME_DIR)) fs.mkdirSync(GAME_DIR, { recursive: true }); fs.writeFileSync(SETTINGS_FILE, JSON.stringify(s, null, 2)); } catch(e) {}
+}
+
+const settings = loadSettings();
+
+// ── Ник ──
+const usernameInput = document.getElementById('username');
+usernameInput.value = settings.username || '';
+usernameInput.addEventListener('input', () => { settings.username = usernameInput.value.trim(); saveSettings(settings); });
+
+// ── RAM ──
+const ramSlider = document.getElementById('ram-slider');
+const ramValue  = document.getElementById('ram-value');
+const totalRamGb = Math.floor(os.totalmem() / 1024 / 1024 / 1024);
+const maxRam = Math.max(4, totalRamGb - 2);
+ramSlider.max = maxRam;
+ramSlider.min = 1;
+ramSlider.value = settings.ram || Math.min(4, maxRam);
+ramValue.textContent = ramSlider.value + ' ГБ';
+document.getElementById('ram-total').textContent = `Всего: ${totalRamGb} ГБ · Макс для игры: ${maxRam} ГБ`;
+ramSlider.addEventListener('input', () => {
+  ramValue.textContent = ramSlider.value + ' ГБ';
+  settings.ram = parseInt(ramSlider.value);
+  saveSettings(settings);
+});
+
+// ── Пути ──
+document.getElementById('mods-path-label').textContent = MODS_DIR;
+document.getElementById('game-path-label').textContent = GAME_DIR;
+
+// ── IPC ──
 function ipc(channel, data) { ipcRenderer.send(channel, data); }
 
-// ── Navigation ──
+// ── Навигация ──
 function showPage(id, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -378,96 +347,124 @@ function showPage(id, el) {
   if (id === 'mods') loadModsList();
 }
 
-// ── Account type ──
-function selectAccount(type) {
-  accountType = type;
-  document.getElementById('rb-offline').classList.toggle('selected', type === 'offline');
-  document.getElementById('rb-licensed').classList.toggle('selected', type === 'licensed');
-}
-
-// ── Launch ──
+// ── Запуск ──
 function launch() {
-  const username = document.getElementById('username').value.trim();
+  const username = usernameInput.value.trim();
   if (!username) { alert('Введите никнейм!'); return; }
   if (gameRunning) return;
-
-  document.getElementById('progress-section').classList.add('visible');
-  document.getElementById('launch-btn').disabled = true;
-
-  ipc('launch', { username, isLicensed: accountType === 'licensed' });
+  gameRunning = true;
+  document.getElementById('state-normal').style.display = 'none';
+  document.getElementById('state-progress').style.display = 'block';
+  document.getElementById('state-playing').style.display = 'none';
+  ipc('launch', { username, ram: settings.ram || 2 });
 }
 
-// ── Progress ──
+// ── Состояние игры ──
+ipcRenderer.on('game-launched', (_, running) => {
+  gameRunning = running;
+  if (running) {
+    document.getElementById('state-normal').style.display = 'none';
+    document.getElementById('state-progress').style.display = 'none';
+    document.getElementById('state-playing').style.display = 'flex';
+    setTimeout(() => ipc('minimize'), 1500);
+  } else {
+    document.getElementById('state-normal').style.display = 'flex';
+    document.getElementById('state-progress').style.display = 'none';
+    document.getElementById('state-playing').style.display = 'none';
+  }
+});
+
+// ── Прогресс ──
 ipcRenderer.on('progress', (_, { label, value }) => {
   const bar = document.getElementById('progress-bar');
   document.getElementById('progress-label').textContent = label;
-  if (value < 0) {
-    bar.classList.add('indeterminate');
-  } else {
-    bar.classList.remove('indeterminate');
-    bar.style.width = Math.round(value * 100) + '%';
-  }
+  if (value < 0) { bar.classList.add('indeterminate'); }
+  else { bar.classList.remove('indeterminate'); bar.style.width = Math.round(value * 100) + '%'; }
 });
 
-ipcRenderer.on('game-launched', () => {
-  gameRunning = false;
-  document.getElementById('launch-btn').disabled = false;
-  document.getElementById('progress-section').classList.remove('visible');
-  document.getElementById('progress-label').textContent = '';
-});
-
-// ── Logs ──
-ipcRenderer.on('log', (_, msg) => {
+// ── Логи ──
+function isImportant(msg) {
+  return ['🚀','✅','❌','⬇️','🔍','⚠️','☕','📦','⚙️','🗑️','📥'].some(e => msg.startsWith(e));
+}
+function addLogLine(msg) {
+  allLogs.push(msg);
+  renderLogLine(msg);
+}
+function renderLogLine(msg) {
+  if (logFilter === 'important' && !isImportant(msg)) return;
   const out = document.getElementById('log-output');
   const line = document.createElement('div');
-  line.className = 'log-line' +
-    (msg.includes('✅') ? ' ok' : msg.includes('❌') ? ' err' : msg.includes('⚠️') ? ' warn' : '');
+  line.className = 'log-line' + (msg.includes('✅') ? ' ok' : msg.includes('❌') ? ' err' : msg.includes('⚠️') ? ' warn' : msg.startsWith('[MCLC]') ? ' mclc' : '');
   line.textContent = msg;
   out.appendChild(line);
   out.scrollTop = out.scrollHeight;
-});
-
-ipcRenderer.on('error', (_, msg) => {
+}
+function setFilter(f) {
+  logFilter = f;
+  document.getElementById('filter-all').classList.toggle('active', f === 'all');
+  document.getElementById('filter-important').classList.toggle('active', f === 'important');
   const out = document.getElementById('log-output');
-  const line = document.createElement('div');
-  line.className = 'log-line err';
-  line.textContent = '❌ ' + msg;
-  out.appendChild(line);
-});
+  out.innerHTML = '';
+  allLogs.forEach(renderLogLine);
+}
+function clearLog() { allLogs = []; document.getElementById('log-output').innerHTML = ''; }
+ipcRenderer.on('log', (_, msg) => addLogLine(msg));
+ipcRenderer.on('error', (_, msg) => addLogLine('❌ ' + msg));
 
-// ── Mods list ──
+// ── Моды ──
 function loadModsList() {
-  const modsDir = path.join(os.homedir(), 'AppData', 'Roaming', '.yourserver', 'mods');
   const container = document.getElementById('mods-list');
   container.innerHTML = '';
-
-  if (!fs.existsSync(modsDir)) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:13px">Моды ещё не загружены. Запустите игру.</div>';
-    return;
-  }
-
-  const files = fs.readdirSync(modsDir).filter(f => f.endsWith('.jar'));
-  if (!files.length) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:13px">Моды не найдены.</div>';
-    return;
-  }
-
+  if (!fs.existsSync(MODS_DIR)) { container.innerHTML = '<div style="color:var(--muted)">Моды ещё не загружены. Запустите игру.</div>'; return; }
+  const files = fs.readdirSync(MODS_DIR).filter(f => f.endsWith('.jar'));
+  if (!files.length) { container.innerHTML = '<div style="color:var(--muted)">Моды не найдены.</div>'; return; }
   files.forEach(f => {
     const el = document.createElement('div');
-    el.style.cssText = 'padding:12px 16px;background:var(--panel);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;gap:12px';
-    el.innerHTML = `
-      <span style="font-size:18px">📦</span>
-      <span style="color:var(--text);font-size:13px">${f}</span>
-      <span style="margin-left:auto;font-size:11px;color:var(--green)">✓ установлен</span>
-    `;
+    el.className = 'mod-item';
+    el.innerHTML = `<span style="font-size:16px">📦</span><span style="color:var(--text);font-size:12px">${f}</span><span style="margin-left:auto;font-size:11px;color:var(--green)">✓</span>`;
     container.appendChild(el);
   });
 }
 
-// ── Launcher update ──
-ipcRenderer.on('launcher-update-ready', () => {
-  document.getElementById('update-banner').classList.add('visible');
+// ── Папки ──
+function openModsFolder() { if (!fs.existsSync(MODS_DIR)) fs.mkdirSync(MODS_DIR, { recursive: true }); shell.openPath(MODS_DIR); }
+function openGameFolder()  { if (!fs.existsSync(GAME_DIR)) fs.mkdirSync(GAME_DIR, { recursive: true }); shell.openPath(GAME_DIR); }
+function openLink(url) { shell.openExternal(url); }
+
+// ── Статус сервера ──
+ipcRenderer.on('server-status', (_, result) => {
+  const dot  = document.getElementById('server-dot');
+  const text = document.getElementById('server-status-text');
+  if (result.online) {
+    dot.style.background = 'var(--green)';
+    text.textContent = `Онлайн · ${result.current}/${result.max}`;
+  } else {
+    dot.style.background = 'var(--danger)';
+    text.textContent = 'Сервер оффлайн';
+  }
 });
+
+// ── Новости с GitHub ──
+async function loadNews() {
+  try {
+    const res = await fetch('https://raw.githubusercontent.com/exxpion/shiza-launcher/main/news.json');
+    const news = await res.json();
+    const container = document.getElementById('news-list');
+    container.innerHTML = '';
+    news.forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'news-item';
+      el.innerHTML = `<div class="news-date">${item.date}</div><div class="news-title">${item.title}</div>${item.body ? `<div class="news-body">${item.body}</div>` : ''}`;
+      container.appendChild(el);
+    });
+  } catch(e) {
+    document.getElementById('news-list').innerHTML = '<div class="news-item"><div class="news-date">—</div><div class="news-title">Не удалось загрузить новости</div></div>';
+  }
+}
+loadNews();
+
+// ── Обновление лаунчера ──
+ipcRenderer.on('launcher-update-ready', () => { document.getElementById('update-banner').classList.add('visible'); });
 </script>
 </body>
 </html>

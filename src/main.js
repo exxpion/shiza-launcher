@@ -1,57 +1,49 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const { autoUpdater } = require('electron-updater');
+const { Client, Authenticator } = require('minecraft-launcher-core');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
-const http = require('http');
-const { execFile, spawn } = require('child_process');
-const crypto = require('crypto');
 const os = require('os');
+const crypto = require('crypto');
 
 // ─── КОНФИГУРАЦИЯ ────────────────────────────────────────────────────────────
 const CONFIG = {
-  // Замените на ваш GitHub username/repo
-  githubOwner: 'exxpion',
-  githubRepo: 'shiza-launcher',
-
-  // Версии
-  mcVersion: '1.20.4',
+  githubOwner:  'exxpion',
+  githubRepo:   'shiza-launcher',
+  mcVersion:    '1.20.4',
   forgeVersion: '1.20.4-49.1.0',
-
-  // Папка установки (.minecraft в AppData)
-  gameDir: path.join(os.homedir(), 'AppData', 'Roaming', '.yourserver'),
+  gameDir:      path.join(os.homedir(), 'AppData', 'Roaming', '.shiza-mc'),
+  serverHost:   '203.16.163.171',
+  serverPort:   28145,
 };
 
 CONFIG.modsDir     = path.join(CONFIG.gameDir, 'mods');
-CONFIG.configsDir  = path.join(CONFIG.gameDir, 'config');
 CONFIG.manifestUrl = `https://raw.githubusercontent.com/${CONFIG.githubOwner}/${CONFIG.githubRepo}/main/manifest.json`;
-CONFIG.forgeUrl    = `https://maven.minecraftforge.net/net/minecraftforge/forge/${CONFIG.forgeVersion}/forge-${CONFIG.forgeVersion}-installer.jar`;
-CONFIG.javaApiUrl  = 'https://api.adoptium.net/v3/assets/latest/21/hotspot?os=windows&architecture=x64&image_type=jre';
+CONFIG.newsUrl     = `https://raw.githubusercontent.com/${CONFIG.githubOwner}/${CONFIG.githubRepo}/main/news.json`;
 
 let mainWindow;
 
-// ─── СОЗДАНИЕ ОКНА ───────────────────────────────────────────────────────────
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught:', err.message);
+  send('log', '⚠️ ' + err.message);
+});
+
+// ─── ОКНО ────────────────────────────────────────────────────────────────────
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 900,
-    height: 580,
-    minWidth: 900,
-    minHeight: 580,
-    maxWidth: 900,
-    maxHeight: 580,
-    frame: false,         // Без стандартного заголовка Windows — свой дизайн
-    resizable: false,
-    backgroundColor: '#0a0e1a',
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-    },
+    width: 900, height: 580,
+    minWidth: 900, minHeight: 580,
+    maxWidth: 900, maxHeight: 580,
+    frame: false, resizable: false,
+    backgroundColor: '#0d0d0d',
+    webPreferences: { nodeIntegration: true, contextIsolation: false },
     icon: path.join(__dirname, '..', 'assets', 'icon.ico'),
   });
-
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
-
-  // Автообновление лаунчера
+  mainWindow.webContents.on('did-finish-load', () => {
+    setTimeout(() => startServerPing(), 1000);
+  });
   if (!process.argv.includes('--dev')) {
     autoUpdater.checkForUpdatesAndNotify();
   }
@@ -60,30 +52,37 @@ function createWindow() {
 app.whenReady().then(createWindow);
 app.on('window-all-closed', () => app.quit());
 
-// ─── ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ─────────────────────────────────────────────────
-
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
 function send(event, data) {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send(event, data);
   }
 }
 
-function log(msg) {
-  console.log(msg);
-  send('log', msg);
+function log(msg) { console.log(msg); send('log', msg); }
+
+function fetchJson(url) {
+  return new Promise((resolve, reject) => {
+    https.get(url, { headers: { 'User-Agent': 'ShizaLauncher/1.0' } }, (res) => {
+      if (res.statusCode === 301 || res.statusCode === 302) {
+        return fetchJson(res.headers.location).then(resolve).catch(reject);
+      }
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => { try { resolve(JSON.parse(data)); } catch(e) { reject(e); } });
+    }).on('error', reject);
+  });
 }
 
 function downloadFile(url, dest, onProgress) {
   return new Promise((resolve, reject) => {
-    const proto = url.startsWith('https') ? https : http;
+    const proto = url.startsWith('https') ? https : require('http');
+    if (fs.existsSync(dest)) { try { fs.unlinkSync(dest); } catch(e) {} }
     const file = fs.createWriteStream(dest);
-
-    proto.get(url, (res) => {
+    proto.get(url, { headers: { 'User-Agent': 'ShizaLauncher/1.0' } }, (res) => {
       if (res.statusCode === 301 || res.statusCode === 302) {
         file.close();
-        fs.unlinkSync(dest);
-        return downloadFile(res.headers.location, dest, onProgress)
-          .then(resolve).catch(reject);
+        return downloadFile(res.headers.location, dest, onProgress).then(resolve).catch(reject);
       }
       const total = parseInt(res.headers['content-length'] || '0', 10);
       let downloaded = 0;
@@ -93,263 +92,270 @@ function downloadFile(url, dest, onProgress) {
       });
       res.pipe(file);
       file.on('finish', () => file.close(resolve));
-    }).on('error', err => {
-      fs.unlink(dest, () => {});
-      reject(err);
-    });
+    }).on('error', err => { try { fs.unlinkSync(dest); } catch(e) {} reject(err); });
   });
 }
 
-function md5File(filePath) {
-  return new Promise((resolve, reject) => {
-    const hash = crypto.createHash('md5');
-    const stream = fs.createReadStream(filePath);
-    stream.on('data', d => hash.update(d));
-    stream.on('end', () => resolve(hash.digest('hex')));
-    stream.on('error', reject);
-  });
+// ─── SERVERS.DAT ─────────────────────────────────────────────────────────────
+function createServersDat() {
+  const serversDat = path.join(CONFIG.gameDir, 'servers.dat');
+  if (fs.existsSync(serversDat)) return;
+  const buf = Buffer.from([10,0,0,9,0,7,115,101,114,118,101,114,115,10,0,0,0,1,8,0,4,105,99,111,110,0,0,8,0,2,105,112,0,20,50,48,51,46,49,54,46,49,54,51,46,49,55,49,58,50,56,49,52,53,8,0,4,110,97,109,101,0,12,83,104,105,122,97,32,83,101,114,118,101,114,1,0,14,97,99,99,101,112,116,84,101,120,116,117,114,101,115,1,0,0]);
+  fs.writeFileSync(serversDat, buf);
+  log('✅ Сервер добавлен в список серверов');
 }
 
-function fetchJson(url) {
-  return new Promise((resolve, reject) => {
-    const proto = url.startsWith('https') ? https : http;
-    proto.get(url, { headers: { 'User-Agent': 'MCLauncher/1.0' } }, (res) => {
-      if (res.statusCode === 301 || res.statusCode === 302) {
-        return fetchJson(res.headers.location).then(resolve).catch(reject);
-      }
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try { resolve(JSON.parse(data)); }
-        catch (e) { reject(e); }
-      });
-    }).on('error', reject);
-  });
-}
-
-// ─── ПОИСК JAVA ──────────────────────────────────────────────────────────────
-
-async function findJava() {
-  const javaInGame = path.join(CONFIG.gameDir, 'java', 'bin', 'java.exe');
-  if (fs.existsSync(javaInGame)) return javaInGame;
-
-  // Проверить системную Java
-  return new Promise(resolve => {
-    execFile('java', ['-version'], (err) => {
-      resolve(err ? null : 'java');
-    });
-  });
-}
-
-async function installJava() {
-  log('☕ Скачиваю Java 21...');
-  const javaDir = path.join(CONFIG.gameDir, 'java');
-  const zipPath  = path.join(CONFIG.gameDir, 'java.zip');
-
-  const api = await fetchJson(CONFIG.javaApiUrl);
-  const asset = api[0]?.binary?.package;
-  if (!asset) throw new Error('Не удалось получить ссылку на Java');
-
-  await downloadFile(asset.link, zipPath, p => {
-    send('progress', { label: 'Загрузка Java...', value: p });
-  });
-
-  log('📦 Распаковываю Java...');
-  const extractZip = require('extract-zip');
-  await extractZip(zipPath, { dir: javaDir });
-  fs.unlinkSync(zipPath);
-
-  // Найти java.exe внутри распакованной папки
-  const entries = fs.readdirSync(javaDir);
-  const jreFolder = entries.find(e => e.startsWith('jdk') || e.startsWith('jre'));
-  if (jreFolder) {
-    const src = path.join(javaDir, jreFolder);
-    const items = fs.readdirSync(src);
-    items.forEach(item => {
-      fs.renameSync(path.join(src, item), path.join(javaDir, item));
-    });
-    fs.rmdirSync(src);
-  }
-
-  log('✅ Java установлена');
-  return path.join(javaDir, 'bin', 'java.exe');
-}
-
-// ─── ПРОВЕРКА И УСТАНОВКА FORGE ──────────────────────────────────────────────
-
-async function ensureForge(javaPath) {
-  const versionDir = path.join(CONFIG.gameDir, 'versions', `${CONFIG.forgeVersion}`);
-  const versionJson = path.join(versionDir, `${CONFIG.forgeVersion}.json`);
-
-  if (fs.existsSync(versionJson)) {
-    log('✅ Forge уже установлен');
-    return;
-  }
-
-  log('⚙️ Скачиваю Forge installer...');
-  const installerPath = path.join(CONFIG.gameDir, 'forge-installer.jar');
-  await downloadFile(CONFIG.forgeUrl, installerPath, p => {
-    send('progress', { label: 'Загрузка Forge...', value: p });
-  });
-
-  log('⚙️ Устанавливаю Forge (это займёт минуту)...');
-  send('progress', { label: 'Установка Forge...', value: -1 }); // indeterminate
-
-  await new Promise((resolve, reject) => {
-    const proc = execFile(javaPath, [
-      '-jar', installerPath,
-      '--installClient', CONFIG.gameDir
-    ], (err) => {
-      if (err) reject(err); else resolve();
-    });
-    proc.stdout?.on('data', d => log(d.toString().trim()));
-    proc.stderr?.on('data', d => log(d.toString().trim()));
-  });
-
-  fs.unlinkSync(installerPath);
-  log('✅ Forge установлен');
-}
-
-// ─── СИНХРОНИЗАЦИЯ МОДОВ ─────────────────────────────────────────────────────
-
+// ─── МОДЫ ────────────────────────────────────────────────────────────────────
 async function syncMods() {
-  log('🔍 Проверяю моды...');
+  log('🔍 Проверяю моды с GitHub...');
   if (!fs.existsSync(CONFIG.modsDir)) fs.mkdirSync(CONFIG.modsDir, { recursive: true });
 
-  let manifest;
+  let assets;
   try {
-    manifest = await fetchJson(CONFIG.manifestUrl);
-  } catch (e) {
-    log('⚠️ Не удалось загрузить манифест. Проверьте соединение.');
+    const release = await fetchJson(
+      `https://api.github.com/repos/${CONFIG.githubOwner}/${CONFIG.githubRepo}/releases/tags/mods`
+    );
+    assets = release.assets.filter(a => a.name.endsWith('.jar'));
+    log(`📦 Найдено модов на GitHub: ${assets.length}`);
+  } catch(e) {
+    log('⚠️ Не удалось получить список модов: ' + e.message);
     return;
   }
 
-  const { mods } = manifest;
-  let i = 0;
-
-  for (const mod of mods) {
-    i++;
-    const dest = path.join(CONFIG.modsDir, mod.filename);
-    send('progress', { label: `Проверка модов (${i}/${mods.length})...`, value: i / mods.length });
-
-    // Проверить MD5
-    if (fs.existsSync(dest)) {
-      const hash = await md5File(dest);
-      if (hash === mod.md5) continue; // файл актуален
-    }
-
-    log(`⬇️ Скачиваю ${mod.filename}...`);
-    await downloadFile(mod.url, dest, p => {
-      send('progress', { label: `Скачиваю ${mod.filename}...`, value: p });
+  for (let i = 0; i < assets.length; i++) {
+    const asset = assets[i];
+    const dest = path.join(CONFIG.modsDir, asset.name);
+    send('progress', { label: `Проверка модов (${i+1}/${assets.length})...`, value: (i+1)/assets.length });
+    if (fs.existsSync(dest) && fs.statSync(dest).size === asset.size) continue;
+    log(`⬇️ Скачиваю ${asset.name}...`);
+    await downloadFile(asset.browser_download_url, dest, p => {
+      send('progress', { label: `Скачиваю ${asset.name}...`, value: p });
     });
   }
 
-  // Удалить моды которых нет в манифесте
-  const allowed = new Set(mods.map(m => m.filename));
+  const allowed = new Set(assets.map(a => a.name));
   for (const file of fs.readdirSync(CONFIG.modsDir)) {
     if (file.endsWith('.jar') && !allowed.has(file)) {
       fs.unlinkSync(path.join(CONFIG.modsDir, file));
       log(`🗑️ Удалён устаревший мод: ${file}`);
     }
   }
-
   log('✅ Все моды актуальны');
 }
 
-// ─── ЗАПУСК ИГРЫ ─────────────────────────────────────────────────────────────
+// ─── JAVA 17 ─────────────────────────────────────────────────────────────────
+async function getJava17() {
+  const localJava = path.join(CONFIG.gameDir, 'java17', 'bin', 'java.exe');
+  if (fs.existsSync(localJava)) return localJava;
 
-async function launchGame(username, isLicensed) {
-  log('🚀 Запускаю игру...');
-
-  const javaExe = await findJava() || await installJava();
-
-  await ensureForge(javaExe);
-  await syncMods();
-
-  // Читаем launch-параметры из forge version json
-  const versionId = `forge-${CONFIG.forgeVersion}`;
-  const versionJsonPath = path.join(CONFIG.gameDir, 'versions', versionId, `${versionId}.json`);
-
-  let mainClass = 'cpw.mods.bootstraplauncher.BootstrapLauncher';
-  let gameArgs = [];
-
-  if (fs.existsSync(versionJsonPath)) {
-    const vJson = JSON.parse(fs.readFileSync(versionJsonPath, 'utf8'));
-    mainClass = vJson.mainClass || mainClass;
+  const { execSync } = require('child_process');
+  const javaPaths = [
+    'C:\\Program Files\\Java\\jre-17\\bin\\java.exe',
+    'C:\\Program Files\\Java\\jdk-17\\bin\\java.exe',
+    'C:\\Program Files\\Eclipse Adoptium\\jre-17\\bin\\java.exe',
+    'C:\\Program Files\\Microsoft\\jdk-17\\bin\\java.exe',
+  ];
+  for (const p of javaPaths) {
+    if (fs.existsSync(p)) { log('✅ Найдена системная Java 17'); return p; }
   }
 
-  const uuid = isLicensed
-    ? '00000000-0000-0000-0000-000000000000' // заменить на реальный OAuth
-    : '00000000-0000-0000-0000-' + Buffer.from(username).toString('hex').padEnd(12, '0').slice(0, 12);
+  try {
+    const javaHome = process.env.JAVA_HOME;
+    if (javaHome) {
+      const javaExe = path.join(javaHome, 'bin', 'java.exe');
+      if (fs.existsSync(javaExe)) {
+        const version = execSync(`"${javaExe}" -version 2>&1`).toString();
+        if (version.includes('17') || version.includes('21')) {
+          log('✅ Найдена Java через JAVA_HOME'); return javaExe;
+        }
+      }
+    }
+  } catch(e) {}
 
-  const jvmArgs = [
-    '-Xmx4G', '-Xms1G',
-    `-Djava.library.path=${path.join(CONFIG.gameDir, 'natives')}`,
-    '-cp', buildClasspath(),
-    mainClass,
-  ];
+  log('☕ Скачиваю Java 17...');
+  const api = await fetchJson('https://api.adoptium.net/v3/assets/latest/17/hotspot?os=windows&architecture=x64&image_type=jre');
+  const asset = api[0]?.binary?.package;
+  if (!asset) throw new Error('Не удалось найти Java 17');
 
-  gameArgs = [
-    '--username', username,
-    '--version', CONFIG.mcVersion,
-    '--gameDir', CONFIG.gameDir,
-    '--assetsDir', path.join(CONFIG.gameDir, 'assets'),
-    '--assetIndex', CONFIG.mcVersion,
-    '--uuid', uuid,
-    '--accessToken', isLicensed ? 'REAL_TOKEN' : 'offline',
-    '--userType', isLicensed ? 'msa' : 'legacy',
-  ];
-
-  const proc = spawn(javaExe, [...jvmArgs, ...gameArgs], {
-    cwd: CONFIG.gameDir,
-    detached: true,
-    stdio: 'ignore',
+  const zipPath = path.join(CONFIG.gameDir, 'java17.zip');
+  await downloadFile(asset.link, zipPath, p => {
+    send('progress', { label: 'Скачиваю Java 17...', value: p });
   });
 
-  proc.unref();
-  send('game-launched', true);
-  log('✅ Игра запущена!');
-}
+  log('📦 Распаковываю Java 17...');
+  const extractZip = require('extract-zip');
+  const javaDir = path.join(CONFIG.gameDir, 'java17');
+  fs.mkdirSync(javaDir, { recursive: true });
+  await new Promise(r => setTimeout(r, 500));
+  await extractZip(zipPath, { dir: javaDir });
+  fs.unlinkSync(zipPath);
 
-function buildClasspath() {
-  const libDir = path.join(CONFIG.gameDir, 'libraries');
-  const jars = [];
-
-  function walk(dir) {
-    if (!fs.existsSync(dir)) return;
-    for (const f of fs.readdirSync(dir)) {
-      const full = path.join(dir, f);
-      if (fs.statSync(full).isDirectory()) walk(full);
-      else if (f.endsWith('.jar')) jars.push(full);
+  const entries = fs.readdirSync(javaDir);
+  const inner = entries.find(e => fs.statSync(path.join(javaDir, e)).isDirectory());
+  if (inner) {
+    const innerPath = path.join(javaDir, inner);
+    for (const item of fs.readdirSync(innerPath)) {
+      fs.renameSync(path.join(innerPath, item), path.join(javaDir, item));
     }
+    fs.rmdirSync(innerPath);
   }
 
-  walk(libDir);
-
-  const versionJar = path.join(CONFIG.gameDir, 'versions', CONFIG.mcVersion, `${CONFIG.mcVersion}.jar`);
-  if (fs.existsSync(versionJar)) jars.push(versionJar);
-
-  return jars.join(path.delimiter);
+  log('✅ Java 17 готова');
+  return localJava;
 }
 
-// ─── IPC СОБЫТИЯ ─────────────────────────────────────────────────────────────
+// ─── ЗАПУСК ──────────────────────────────────────────────────────────────────
+async function launchGame(username, ram = 2) {
+  log('🚀 Запускаю игру...');
 
-ipcMain.on('launch', async (_, { username, isLicensed }) => {
-  try {
-    await launchGame(username, isLicensed);
-  } catch (err) {
+  if (!fs.existsSync(CONFIG.gameDir)) fs.mkdirSync(CONFIG.gameDir, { recursive: true });
+  if (!fs.existsSync(CONFIG.modsDir)) fs.mkdirSync(CONFIG.modsDir, { recursive: true });
+
+  const java17Dir = path.join(CONFIG.gameDir, 'java17');
+  if (!fs.existsSync(java17Dir)) fs.mkdirSync(java17Dir, { recursive: true });
+
+  const profilesPath = path.join(CONFIG.gameDir, 'launcher_profiles.json');
+  if (!fs.existsSync(profilesPath)) {
+    fs.writeFileSync(profilesPath, JSON.stringify({
+      profiles: { default: { name: 'Default', type: 'latest-release' } },
+      selectedProfile: 'default',
+      clientToken: crypto.randomUUID(),
+    }, null, 2));
+  }
+
+  createServersDat();
+  await syncMods();
+
+  const javaPath = await getJava17();
+
+  const forgeInstallerPath = path.join(CONFIG.gameDir, 'forge-installer.jar');
+  const forgeInstallerUrl = `https://maven.minecraftforge.net/net/minecraftforge/forge/${CONFIG.forgeVersion}/forge-${CONFIG.forgeVersion}-installer.jar`;
+  if (!fs.existsSync(forgeInstallerPath)) {
+    log('⬇️ Скачиваю Forge installer...');
+    send('progress', { label: 'Скачиваю Forge...', value: -1 });
+    await downloadFile(forgeInstallerUrl, forgeInstallerPath, p => {
+      send('progress', { label: 'Скачиваю Forge...', value: p });
+    });
+  }
+
+  const launcher = new Client();
+
+  launcher.on('debug', (e) => log(String(e)));
+  launcher.on('data',  (e) => log(String(e)));
+  launcher.on('progress', (e) => {
+    if (e.type && e.task !== undefined && e.total !== undefined) {
+      send('progress', { label: `${e.type} (${e.task}/${e.total})`, value: e.task / e.total });
+    }
+  });
+
+  let opts = {
+    authorization: Authenticator.getAuth(username),
+    root: CONFIG.gameDir,
+    version: { number: CONFIG.mcVersion, type: 'release' },
+    forge: forgeInstallerPath,
+    javaPath: javaPath,
+    memory: { max: `${ram}G`, min: '1G' },
+    overrides: { gameDirectory: CONFIG.gameDir, detached: true, windowsHide: true },
+  };
+
+  launcher.on('close', async (code) => {
+    if (code === 1) {
+      log('⚙️ Forge установлен, перезапускаю игру...');
+      send('progress', { label: 'Перезапуск...', value: -1 });
+      await new Promise(r => setTimeout(r, 2000));
+      try { await launcher.launch(opts); } catch(e) {
+        log('❌ Ошибка перезапуска: ' + e.message);
+        send('game-launched', false);
+      }
+      return;
+    }
+    log(code === 0 ? '✅ Игра закрыта' : `⚠️ Игра закрыта с кодом ${code}`);
+    send('game-launched', false);
+  });
+
+  log('⬇️ MCLC скачивает и проверяет файлы...');
+  send('progress', { label: 'Подготовка к запуску...', value: -1 });
+  await launcher.launch(opts);
+  log('✅ Игра запущена!');
+  send('game-launched', true);
+}
+
+// ─── IPC ─────────────────────────────────────────────────────────────────────
+ipcMain.on('launch', async (_, { username, ram }) => {
+  try { await launchGame(username, ram); }
+  catch(err) {
     log('❌ Ошибка: ' + err.message);
     send('error', err.message);
+    send('game-launched', false);
   }
 });
 
 ipcMain.on('minimize', () => mainWindow.minimize());
-ipcMain.on('close', () => app.quit());
+ipcMain.on('close',    () => app.quit());
 
-// Автообновление лаунчера
-autoUpdater.on('update-downloaded', () => {
-  send('launcher-update-ready', true);
-});
-ipcMain.on('install-update', () => {
-  autoUpdater.quitAndInstall();
-});
+autoUpdater.on('update-downloaded', () => send('launcher-update-ready', true));
+ipcMain.on('install-update', () => autoUpdater.quitAndInstall());
+
+// ─── ПИНГ СЕРВЕРА ────────────────────────────────────────────────────────────
+function pingServer(host, port = 25565) {
+  return new Promise((resolve) => {
+    const net = require('net');
+    const socket = net.createConnection({ host, port, timeout: 5000 });
+    let buffer = Buffer.alloc(0);
+
+    socket.on('connect', () => {
+      function writeVarInt(val) {
+        const buf = [];
+        while (true) {
+          if ((val & ~0x7F) === 0) { buf.push(val); break; }
+          buf.push((val & 0x7F) | 0x80);
+          val >>>= 7;
+        }
+        return Buffer.from(buf);
+      }
+      function makePacket(id, data) {
+        const idBuf   = writeVarInt(id);
+        const content = Buffer.concat([idBuf, data]);
+        const lenBuf  = writeVarInt(content.length);
+        return Buffer.concat([lenBuf, content]);
+      }
+      const hostBuf   = Buffer.from(host, 'utf8');
+      const hostLen   = writeVarInt(hostBuf.length);
+      const portBuf   = Buffer.alloc(2); portBuf.writeUInt16BE(port);
+      const nextState = writeVarInt(1);
+      const protoVer  = writeVarInt(765);
+      const handshakeData = Buffer.concat([protoVer, hostLen, hostBuf, portBuf, nextState]);
+      socket.write(Buffer.concat([makePacket(0x00, handshakeData), makePacket(0x00, Buffer.alloc(0))]));
+
+      setTimeout(() => {
+        if (!socket.destroyed) { socket.destroy(); resolve({ online: false }); }
+      }, 4000);
+    });
+
+    socket.on('data', (chunk) => {
+      buffer = Buffer.concat([buffer, chunk]);
+      try {
+        const str = buffer.toString('utf8');
+        const start = str.indexOf('{');
+        const end   = str.lastIndexOf('}');
+        if (start !== -1 && end !== -1) {
+          const json = JSON.parse(str.substring(start, end + 1));
+          socket.destroy();
+          resolve({ online: true, current: json.players?.online ?? 0, max: json.players?.max ?? 0 });
+        }
+      } catch(e) {}
+    });
+
+    socket.on('error', () => resolve({ online: false }));
+    socket.on('timeout', () => { socket.destroy(); resolve({ online: false }); });
+  });
+}
+
+async function startServerPing() {
+  async function check() {
+    const result = await pingServer(CONFIG.serverHost, CONFIG.serverPort);
+    send('server-status', result);
+  }
+  check();
+  setInterval(check, 30000);
+}
