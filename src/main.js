@@ -47,13 +47,20 @@ function createWindow() {
   if (!process.argv.includes('--dev')) {
     autoUpdater.autoDownload = false;
     autoUpdater.allowDowngrade = false;
-    autoUpdater.checkForUpdates().then(result => {
-      if (result && result.updateInfo) {
-        send('launcher-update-ready', true);
-      }
-    }).catch(err => {
-      console.error('Update check failed:', err.message);
+    autoUpdater.logger = require('electron-log');
+    autoUpdater.logger.transports.file.level = 'debug';
+    autoUpdater.autoDownload = true; // ← добавь эту строку
+    autoUpdater.on('checking-for-update', () => send('log', '🔄 Проверяю обновления...'));
+    autoUpdater.on('update-available', (info) => {
+      send('log', '✅ Найдено обновление: ' + info.version);
     });
+    autoUpdater.on('update-downloaded', () => {
+      send('log', '✅ Обновление скачано');
+      send('launcher-update-ready', true);
+    });
+    autoUpdater.on('update-not-available', () => send('log', '✅ Обновлений нет'));
+    autoUpdater.on('error', (err) => send('log', '❌ Ошибка обновления: ' + err.message));
+    autoUpdater.checkForUpdates();
   }
 }
 
