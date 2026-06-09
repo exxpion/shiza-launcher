@@ -1,6 +1,6 @@
 {
   "name": "shiza-launcher",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "for dashulka and my discord friends",
   "main": "src/main.js",
   "scripts": {
