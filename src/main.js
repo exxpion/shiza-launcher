@@ -45,7 +45,6 @@ function createWindow() {
     setTimeout(() => startServerPing(), 1000);
   });
   if (!process.argv.includes('--dev')) {
-    autoUpdater.autoDownload = false;
     autoUpdater.allowDowngrade = false;
     autoUpdater.logger = require('electron-log');
     autoUpdater.logger.transports.file.level = 'debug';
